@@ -1,0 +1,11 @@
+Latitude,Longitude,Name,Territory,BDM,Tier,Revenue
+40.7128,-74.0060,New York Office,Northeast,John Smith,Tier 1,500000
+34.0522,-118.2437,Los Angeles Office,West Coast,Jane Doe,Tier 1,450000
+41.8781,-87.6298,Chicago Office,Midwest,Bob Johnson,Tier 2,350000
+29.7604,-95.3698,Houston Office,South Central,Alice Brown,Tier 2,300000
+33.4484,-112.0740,Phoenix Office,Southwest,Charlie Wilson,Tier 3,250000
+39.9526,-75.1652,Philadelphia Office,Northeast,John Smith,Tier 2,275000
+29.4241,-98.4936,San Antonio Office,South Central,Alice Brown,Tier 3,200000
+32.7767,-96.7970,Dallas Office,South Central,Alice Brown,Tier 1,400000
+37.3382,-121.8863,San Jose Office,West Coast,Jane Doe,Tier 1,475000
+30.2672,-97.7431,Austin Office,South Central,Alice Brown,Tier 2,325000

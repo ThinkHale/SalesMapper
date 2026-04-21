@@ -1,0 +1,855 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sales Territory Mapper</title>
+
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <header class="app-header">
+            <h1>Sales Territory Mapper</h1>
+            <div class="header-actions">
+                <div class="profile-selector">
+                    <label for="profileSelect">Workspace:</label>
+                    <select id="profileSelect" class="profile-select">
+                        <option value="">Loading...</option>
+                    </select>
+                    <button id="manageProfilesBtn" class="btn btn-icon" title="Manage Workspaces">⚙️</button>
+                </div>
+                <div class="history-controls">
+                    <button id="undoBtn" class="btn btn-icon" title="Undo (Ctrl+Z)" disabled>↶</button>
+                    <button id="redoBtn" class="btn btn-icon" title="Redo (Ctrl+Y)" disabled>↷</button>
+                </div>
+                <div class="notification-controls">
+                    <button id="notificationBtn" class="btn btn-icon" title="Notifications">
+                        🔔
+                        <span id="notificationBadge" class="notification-badge" style="display: none;">0</span>
+                    </button>
+                </div>
+                <!-- Sync status indicator (auto-save active with real-time collaboration) -->
+                <div id="syncStatus" class="sync-status" style="display: none;">
+                    <span class="sync-icon">🔄</span>
+                    <span class="sync-text">Syncing...</span>
+                </div>
+                <!-- Manual save/load buttons (hidden - auto-save handles everything) -->
+                <button id="saveToFirebase" class="btn btn-primary" style="display: none;">Save to Supabase</button>
+                <button id="loadFromFirebase" class="btn btn-secondary" style="display: none;">Load from Supabase</button>
+                <!-- Signed-in user display -->
+                <div id="userDisplay" class="user-display" style="display:none; align-items:center; gap:8px; margin-left:8px;">
+                    <span id="userEmail" style="font-size:13px; color:var(--color-text-secondary, #666); max-width:160px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"></span>
+                    <button id="signOutBtn" class="btn btn-secondary" style="font-size:12px; padding:4px 10px;">Sign Out</button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <!-- Sidebar -->
+            <aside class="sidebar">
+                <!-- Sidebar Tabs (v3.0) -->
+                <div class="sidebar-tabs">
+                    <button class="sidebar-tab active" data-tab="layers">
+                        <span>📁</span> Layers
+                    </button>
+                    <button class="sidebar-tab" data-tab="analytics">
+                        <span>📊</span> Analytics
+                    </button>
+                    <button class="sidebar-tab" data-tab="activity">
+                        <span>📋</span> Activity
+                    </button>
+                </div>
+
+                <!-- Layers Tab Content -->
+                <div id="layersTab" class="tab-content active">
+                    <!-- Quick Actions -->
+                    <section class="panel compact">
+                        <div class="quick-actions">
+                            <!-- Upload Button -->
+                            <button id="showUploadBtn" class="btn btn-small" title="Import CSV/Excel files">
+                                <span>📤</span>Upload
+                            </button>
+
+                            <!-- Tools Menu -->
+                            <div class="menu-container">
+                                <button id="toolsMenuBtn" class="btn btn-small" title="Tools">
+                                    <span>🛠️</span>Tools
+                                </button>
+                                <div id="toolsMenu" class="dropdown-menu" style="display: none;">
+                                    <button id="showSearchBtn" class="menu-item">
+                                        <span>🔍</span>Search Address
+                                    </button>
+                                    <button id="showDrawToolsBtn" class="menu-item">
+                                        <span>✏️</span>Drawing Tools
+                                    </button>
+                                    <button id="measureDistanceBtn" class="menu-item">
+                                        <span>📏</span>Measure Distance
+                                    </button>
+                                    <button id="exportViewOnlyBtn" class="menu-item" title="Download a shareable, read-only snapshot of the current map">
+                                        <span>🔗</span>Export View-Only Map
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Plugins Menu -->
+                            <div class="menu-container">
+                                <button id="pluginsMenuBtn" class="btn btn-small" title="Plugins">
+                                    <span>🔌</span>Plugins
+                                </button>
+                                <div id="pluginsMenu" class="dropdown-menu" style="display: none;">
+                                    <button id="showPluginsBtn" class="menu-item">
+                                        <span>🔌</span>Plugin Manager
+                                    </button>
+                                    <button id="showClusterSettingsBtn" class="menu-item">
+                                        <span>🗺️</span>Clustering
+                                    </button>
+                                    <button id="showHeatmapBtn" class="menu-item">
+                                        <span>🔥</span>Heatmap
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Settings Menu -->
+                            <div class="menu-container">
+                                <button id="settingsMenuBtn" class="btn btn-small" title="Settings">
+                                    <span>⚙️</span>Settings
+                                </button>
+                                <div id="settingsMenu" class="dropdown-menu" style="display: none;">
+                                    <button id="showFilterBtn" class="menu-item">
+                                        <span>🔽</span>Filter & Sort
+                                    </button>
+                                    <button id="massUpdateNamesBtn" class="menu-item">
+                                        <span>🔄</span>Update Names
+                                    </button>
+                                    <button id="toggleDebugConsoleBtn" class="menu-item">
+                                        <span>🐛</span>Debug Console
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- Layer Groups -->
+                    <section class="panel">
+                        <div class="panel-header">
+                            <h2>Layer Groups</h2>
+                            <button id="collapseAllGroupsBtn" class="icon-btn" title="Collapse all groups">⬆</button>
+                            <button id="addGroupBtn" class="icon-btn" title="Add group">+</button>
+                        </div>
+                        <div id="layerGroupList" class="layer-group-list">
+                            <!-- Layer groups will be dynamically added here -->
+                        </div>
+                    </section>
+
+                    <!-- Layers Section -->
+                    <section class="panel">
+                        <div class="panel-header">
+                            <h2>Layers</h2>
+                            <button id="addLayerBtn" class="icon-btn" title="Add layer">+</button>
+                        </div>
+                        <div class="layer-search-container">
+                            <input type="text" id="layerSearchInput" class="layer-search-input" placeholder="🔍 Search layers..." />
+                            <button id="clearLayerSearch" class="clear-search-btn" style="display: none;" title="Clear search">×</button>
+                        </div>
+                        <div id="layerList" class="layer-list">
+                            <!-- Layers will be dynamically added here -->
+                        </div>
+                    </section>
+
+                    <!-- Feature Info Section -->
+                    <section class="panel">
+                        <h2>Selected Feature</h2>
+                        <div id="featureInfo" class="feature-info">
+                            <p class="empty-state">Click on a feature to see details</p>
+                        </div>
+                    </section>
+                </div>
+
+                <!-- Analytics Tab Content (v3.0) -->
+                <div id="analyticsTab" class="tab-content">
+                    <section class="panel">
+                        <div class="panel-header">
+                            <h2>Territory Analytics</h2>
+                            <button id="refreshAnalyticsBtn" class="icon-btn" title="Refresh">↻</button>
+                            <button id="exportAnalyticsBtn" class="icon-btn" title="Export Metrics">📥</button>
+                        </div>
+                        <div id="analyticsContent" class="analytics-content">
+                            <div class="analytics-loading">
+                                <p>Loading analytics...</p>
+                            </div>
+                        </div>
+                    </section>
+                </div>
+
+                <!-- Activity Tab Content (v3.0 Phase 3) -->
+                <div id="activityTab" class="tab-content">
+                    <section class="panel">
+                        <div class="panel-header">
+                            <h2>Activity Log</h2>
+                            <button id="exportActivityJSONBtn" class="icon-btn" title="Export JSON">📥</button>
+                            <button id="exportActivityCSVBtn" class="icon-btn" title="Export CSV">📊</button>
+                            <button id="clearActivityBtn" class="icon-btn" title="Clear All">🗑️</button>
+                        </div>
+                        <div id="activityLogContent" class="activity-content">
+                            <div class="activity-loading">
+                                <p>Loading activity...</p>
+                            </div>
+                        </div>
+                    </section>
+                </div>
+            </aside>
+
+            <!-- Map Container -->
+            <main class="map-container">
+                <div id="googleMap"></div>
+
+                <!-- Map Controls Overlay -->
+                <div class="map-controls">
+                    <button id="zoomIn" class="map-btn" title="Zoom In">+</button>
+                    <button id="zoomOut" class="map-btn" title="Zoom Out">-</button>
+                    <button id="resetView" class="map-btn" title="Reset View">⌂</button>
+                </div>
+
+                <!-- Polygon Edit Controls -->
+                <div id="polygonEditControls" class="polygon-edit-controls" style="display: none;">
+                    <span class="edit-label">Editing Polygon</span>
+                    <button id="savePolygonEdit" class="btn btn-primary btn-small">Save</button>
+                    <button id="cancelPolygonEdit" class="btn btn-secondary btn-small">Cancel</button>
+                </div>
+
+                <!-- Distance Measurement Instructions (v3.0) -->
+                <div id="measurementInstructions" class="measurement-instructions" style="display: none;">
+                    <div class="instructions-content">
+                        <span class="instructions-icon">📏</span>
+                        <span class="instructions-text">Click two points on the map to measure distance</span>
+                        <div style="display: flex; gap: 0.25rem; margin-left: auto;">
+                            <button id="distanceModeBtn" class="btn btn-primary btn-small active" title="Distance Mode">↔️</button>
+                            <button id="radiusModeBtn" class="btn btn-secondary btn-small" title="Radius Mode">⭕</button>
+                            <button id="clearMeasurementBtn" class="btn btn-secondary btn-small">Clear</button>
+                            <button id="closeMeasurementBtn" class="btn btn-secondary btn-small">✕</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Legend -->
+                <div id="mapLegend" class="map-legend">
+                    <h3>Legend</h3>
+                    <div id="legendContent"></div>
+                </div>
+            </main>
+        </div>
+
+        <!-- Notification Panel -->
+        <div id="notificationPanel" class="notification-panel">
+            <div class="notification-panel-header">
+                <h3>🔔 Notifications</h3>
+                <button id="closeNotificationPanel" class="close-panel-btn">×</button>
+            </div>
+            <div id="notificationCenterContent" class="notification-panel-body">
+                <p>Loading notifications...</p>
+            </div>
+        </div>
+
+        <!-- Edit Modal -->
+        <div id="editModal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>Edit Feature</h2>
+                    <span class="close" data-modal="editModal">&times;</span>
+                </div>
+                <div class="modal-body">
+                    <form id="editForm">
+                        <div id="editFormFields">
+                            <!-- Form fields will be dynamically generated -->
+                        </div>
+                        <div class="modal-actions">
+                            <button type="submit" class="btn btn-primary">Save Changes</button>
+                            <button type="button" class="btn btn-secondary" id="cancelEdit">Cancel</button>
+                            <button type="button" class="btn btn-danger" id="deleteFeature">Delete Feature</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Profile Management Modal -->
+        <div id="profileManagementModal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>Manage Workspaces</h2>
+                    <span class="close" data-modal="profileManagementModal">&times;</span>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label>Create New Workspace:</label>
+                        <div style="display: flex; gap: 0.5rem;">
+                            <input type="text" id="newProfileName" class="form-input" placeholder="Enter workspace name" style="flex: 1;">
+                            <button id="createProfileBtn" class="btn btn-primary">Create</button>
+                        </div>
+                    </div>
+
+                    <hr style="margin: 1.5rem 0;">
+
+                    <div class="form-group">
+                        <label>Your Workspaces:</label>
+                        <div id="profileList" class="profile-list">
+                            <!-- Profiles will be listed here -->
+                        </div>
+                    </div>
+
+                    <div class="modal-actions">
+                        <button id="closeProfileManagementBtn" class="btn btn-secondary">Close</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Column Mapping Modal -->
+        <div id="columnMapModal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>Map Address Columns</h2>
+                    <span class="close" data-modal="columnMapModal">&times;</span>
+                </div>
+                <div class="modal-body">
+                    <p>Your CSV doesn't have WKT or Lat/Long columns. Please map address columns for geocoding:</p>
+
+                    <!-- Template Controls -->
+                    <div class="template-controls">
+                        <div class="form-group">
+                            <label for="templateSelect">Load Template:</label>
+                            <div style="display: flex; gap: 0.5rem;">
+                                <select id="templateSelect" class="form-select" style="flex: 1;">
+                                    <option value="">-- No Template --</option>
+                                </select>
+                                <button type="button" id="loadTemplateBtn" class="btn btn-small btn-secondary">Load</button>
+                                <button type="button" id="deleteTemplateBtn" class="btn btn-small btn-danger" style="display: none;">Delete</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <hr style="margin: 1rem 0;">
+
+                    <form id="columnMapForm">
+                        <div class="form-group">
+                            <label for="street1Column">Street 1 / Address:</label>
+                            <select id="street1Column" class="form-select" required>
+                                <option value="">-- Select Column --</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="street2Column">Street 2 (Optional):</label>
+                            <select id="street2Column" class="form-select">
+                                <option value="">-- None --</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="cityColumn">City:</label>
+                            <select id="cityColumn" class="form-select" required>
+                                <option value="">-- Select Column --</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="stateColumn">State (Optional):</label>
+                            <select id="stateColumn" class="form-select">
+                                <option value="">-- None --</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="zipColumn">Zip Code:</label>
+                            <select id="zipColumn" class="form-select" required>
+                                <option value="">-- Select Column --</option>
+                            </select>
+                        </div>
+                        <div class="modal-actions">
+                            <button type="submit" class="btn btn-primary">Geocode Addresses</button>
+                            <button type="button" class="btn btn-secondary" id="saveTemplateBtn">Save as Template</button>
+                            <button type="button" class="btn btn-secondary" id="cancelMapping">Cancel</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Geocoding Progress Modal -->
+        <div id="geocodingModal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>Geocoding Addresses</h2>
+                </div>
+                <div class="modal-body">
+                    <div class="progress-container">
+                        <div class="progress-bar">
+                            <div id="geocodingProgress" class="progress-fill"></div>
+                        </div>
+                        <p id="geocodingStatus">Processing addresses...</p>
+                        <p id="geocodingStats"></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Upload Modal -->
+        <div id="uploadModal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>Import Data</h2>
+                    <span class="close" data-modal="uploadModal">&times;</span>
+                </div>
+                <div class="modal-body">
+                    <!-- Import Tabs -->
+                    <div class="import-tabs">
+                        <button class="import-tab active" data-tab="file">📁 Upload Files</button>
+                        <button class="import-tab" data-tab="paste">📋 Copy/Paste</button>
+                    </div>
+
+                    <!-- File Upload Tab -->
+                    <div id="fileTab" class="import-tab-content active">
+                        <div class="upload-area">
+                            <input type="file" id="csvFileInput" accept=".csv,.xlsx,.xls" multiple />
+                            <button id="uploadBtn" class="btn btn-primary">Upload Files</button>
+                        </div>
+                        <div class="upload-info">
+                            <small>Supported: CSV and Excel files (.csv, .xlsx, .xls). Select multiple files to create separate layers.</small>
+                            <small style="display: block; margin-top: 0.25rem;">Data: WKT polygons, Lat/Long coordinates, or address columns (Street, City, Zip)</small>
+                        </div>
+                    </div>
+
+                    <!-- Copy/Paste Tab -->
+                    <div id="pasteTab" class="import-tab-content">
+                        <div class="paste-area">
+                            <label for="pasteInput">Copy data from Excel or CSV and paste below:</label>
+                            <textarea id="pasteInput" placeholder="Paste your data here (tab-separated or comma-separated)..." rows="10"></textarea>
+                            <button id="importPasteBtn" class="btn btn-primary">Import Pasted Data</button>
+                        </div>
+                        <div class="upload-info">
+                            <small>Copy cells directly from Excel or Google Sheets and paste them here.</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Search Modal -->
+        <div id="searchModal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>Address Search</h2>
+                    <span class="close" data-modal="searchModal">&times;</span>
+                </div>
+                <div class="modal-body">
+                    <div class="search-area-modal">
+                        <input type="text" id="addressSearch" placeholder="Enter address to search..." />
+                        <button id="searchBtn" class="btn btn-primary">Search</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Drawing Tools Modal -->
+        <div id="drawToolsModal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>Drawing Tools</h2>
+                    <span class="close" data-modal="drawToolsModal">&times;</span>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group" style="margin-bottom: 1rem;">
+                        <label for="drawTargetLayer">Add to Layer:</label>
+                        <select id="drawTargetLayer" class="form-select" style="width: 100%;">
+                            <option value="">First available layer</option>
+                        </select>
+                        <small style="display: block; margin-top: 0.25rem; color: #666;">
+                            Select which layer to add new features to
+                        </small>
+                    </div>
+                    <div class="drawing-controls">
+                        <button id="drawPointBtn" class="btn btn-primary">📍 Draw Point</button>
+                        <button id="drawPolygonBtn" class="btn btn-primary">⬟ Draw Polygon</button>
+                        <button id="deleteDrawingBtn" class="btn btn-danger">🗑️ Delete Selected</button>
+                    </div>
+                    <div class="drawing-info">
+                        <small id="drawingStatus">Select a tool to start drawing</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Filter & Sort Modal -->
+        <div id="filterModal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>Filter & Sort</h2>
+                    <span class="close" data-modal="filterModal">&times;</span>
+                </div>
+                <div class="modal-body">
+                    <h3>Filter</h3>
+                    <div class="filter-controls">
+                        <select id="filterColumn" class="form-select">
+                            <option value="">Select column...</option>
+                        </select>
+                        <input type="text" id="filterValue" placeholder="Filter value..." />
+                        <button id="applyFilterBtn" class="btn btn-primary">Apply Filter</button>
+                        <button id="clearFilterBtn" class="btn btn-secondary">Clear Filter</button>
+                    </div>
+                    <hr style="margin: 1.5rem 0;">
+                    <h3>Sort</h3>
+                    <div class="sort-controls">
+                        <select id="sortColumn" class="form-select">
+                            <option value="">Sort by...</option>
+                        </select>
+                        <div style="display: flex; gap: 0.5rem; margin-top: 0.5rem;">
+                            <button id="sortAscBtn" class="btn btn-primary">↑ Ascending</button>
+                            <button id="sortDescBtn" class="btn btn-primary">↓ Descending</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Layer Actions Menu -->
+        <div id="layerActionsMenu" class="context-menu">
+            <button class="context-menu-item" data-action="add">➕ Add Feature</button>
+            <button class="context-menu-item" data-action="rename">✏️ Rename Layer</button>
+            <button class="context-menu-item" data-action="zoom">🔍 Zoom to Layer</button>
+            <button class="context-menu-item" data-action="style">🎨 Style Options</button>
+            <button class="context-menu-item" data-action="export">📥 Export to CSV</button>
+            <button class="context-menu-item" data-action="group">📁 Move to Group</button>
+            <button class="context-menu-item" data-action="delete">🗑️ Delete Layer</button>
+        </div>
+
+        <!-- Rename Layer Modal -->
+        <div id="renameLayerModal" class="modal">
+            <div class="modal-content modal-small">
+                <div class="modal-header">
+                    <h2>Rename Layer</h2>
+                    <span class="close" data-modal="renameLayerModal">&times;</span>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label for="newLayerName">New Name:</label>
+                        <input type="text" id="newLayerName" class="form-input" placeholder="Enter new layer name..." />
+                    </div>
+                    <div class="modal-actions">
+                        <button id="confirmRenameBtn" class="btn btn-primary">Rename</button>
+                        <button id="cancelRenameBtn" class="btn btn-secondary">Cancel</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Move Feature to Layer Modal -->
+        <div id="moveFeatureModal" class="modal">
+            <div class="modal-content modal-small">
+                <div class="modal-header">
+                    <h2>Move Feature to Layer</h2>
+                    <span class="close" data-modal="moveFeatureModal">&times;</span>
+                </div>
+                <div class="modal-body">
+                    <p id="moveFeatureInfo" class="text-muted">Select target layer:</p>
+                    <div class="form-group">
+                        <label for="targetLayerSelect">Target Layer:</label>
+                        <select id="targetLayerSelect" class="form-select">
+                            <!-- Options will be populated dynamically -->
+                        </select>
+                    </div>
+                    <div class="modal-actions">
+                        <button id="confirmMoveBtn" class="btn btn-primary">Move</button>
+                        <button id="cancelMoveBtn" class="btn btn-secondary">Cancel</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Add Layer Modal -->
+        <div id="addLayerModal" class="modal">
+            <div class="modal-content modal-small">
+                <div class="modal-header">
+                    <h2>Add Layer</h2>
+                    <span class="close" data-modal="addLayerModal">&times;</span>
+                </div>
+                <div class="modal-body">
+                    <p class="text-muted">Choose how you want to create a new layer:</p>
+                    <div class="modal-actions" style="flex-direction: column; gap: 12px;">
+                        <button id="createBlankLayerBtn" class="btn btn-primary" style="width: 100%;">
+                            Create Blank Layer
+                        </button>
+                        <button id="uploadDataBtn" class="btn btn-secondary" style="width: 100%;">
+                            Upload Data from File
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Layer Type Selection Modal -->
+        <div id="layerTypeModal" class="modal">
+            <div class="modal-content modal-small">
+                <div class="modal-header">
+                    <h2>Select Layer Type</h2>
+                    <span class="close" data-modal="layerTypeModal">&times;</span>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label for="newLayerNameInput">Layer Name:</label>
+                        <input type="text" id="newLayerNameInput" class="form-input" placeholder="Enter layer name..." />
+                    </div>
+                    <div class="form-group">
+                        <label>Layer Type:</label>
+                        <div style="display: flex; flex-direction: column; gap: 0.75rem; margin-top: 0.5rem;">
+                            <label class="radio-option">
+                                <input type="radio" name="layerType" value="point" checked />
+                                <div class="radio-label">
+                                    <strong>📍 Point Layer</strong>
+                                    <span class="text-muted">For markers and locations</span>
+                                </div>
+                            </label>
+                            <label class="radio-option">
+                                <input type="radio" name="layerType" value="polygon" />
+                                <div class="radio-label">
+                                    <strong>🗺️ Polygon Layer</strong>
+                                    <span class="text-muted">For territories and regions</span>
+                                </div>
+                            </label>
+                            <label class="radio-option">
+                                <input type="radio" name="layerType" value="mixed" />
+                                <div class="radio-label">
+                                    <strong>📍🗺️ Mixed Layer</strong>
+                                    <span class="text-muted">Can hold both points and polygons</span>
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+                    <div class="modal-actions">
+                        <button id="confirmLayerTypeBtn" class="btn btn-primary">Create Layer</button>
+                        <button id="cancelLayerTypeBtn" class="btn btn-secondary">Cancel</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Cluster Settings Modal (v3.0) -->
+        <div id="clusterSettingsModal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>🗺️ Clustering Settings</h2>
+                    <span class="close" data-modal="clusterSettingsModal">&times;</span>
+                </div>
+                <div class="modal-body">
+                    <p class="text-muted">Configure marker clustering behavior and appearance.</p>
+                    <div id="clusterSettingsContent">
+                        <p>Loading settings...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Style Options Modal -->
+        <div id="styleModal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>Style Options</h2>
+                    <span class="close" data-modal="styleModal">&times;</span>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label>Style Type:</label>
+                        <select id="styleType" class="form-select">
+                            <option value="single">Single Color</option>
+                            <option value="tier">Tier Map (by Tier column)</option>
+                            <option value="zone">Zone Map (unique colors per zone)</option>
+                            <option value="bdm">BDM Map (by BDM column)</option>
+                            <option value="custom">Custom Property</option>
+                        </select>
+                    </div>
+                    <div class="form-group" id="customPropertyGroup" style="display: none;">
+                        <label>Property Column:</label>
+                        <select id="customProperty" class="form-select">
+                            <option value="">Select property...</option>
+                        </select>
+                    </div>
+                    <div class="form-group" id="singleColorGroup">
+                        <label>Color:</label>
+                        <input type="color" id="singleColor" value="#0078d4" />
+                    </div>
+                    <div class="form-group">
+                        <label for="layerOpacitySlider">Opacity: <span id="opacityValue">100</span>%</label>
+                        <input type="range" id="layerOpacitySlider" class="opacity-slider-wide" min="0" max="100" value="100">
+                    </div>
+                    <div class="form-group" id="showLabelsGroup" style="display: none;">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="showLabelsToggle">
+                            <span>Show Polygon Names</span>
+                        </label>
+                    </div>
+                    <div class="modal-actions">
+                        <button id="applyStyleBtn" class="btn btn-primary">Apply Style</button>
+                        <button id="cancelStyleBtn" class="btn btn-secondary">Cancel</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Plugins Modal -->
+        <div id="pluginsModal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>Plugins</h2>
+                    <span class="close" data-modal="pluginsModal">&times;</span>
+                </div>
+                <div class="modal-body">
+                    <div id="pluginsList" class="plugins-list">
+                        <!-- Plugins will be dynamically added here -->
+                    </div>
+                    <div id="noPluginsMessage" class="empty-state" style="display: none;">
+                        <p>No plugins installed.</p>
+                        <p class="text-muted">Add plugin files to the <code>plugins/</code> folder to extend functionality.</p>
+                    </div>
+                    <div class="plugins-stats" id="pluginsStats">
+                        <!-- Stats will be added dynamically -->
+                    </div>
+                    <div class="modal-actions">
+                        <button id="closePluginsBtn" class="btn btn-secondary">Close</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Validation Results Modal -->
+        <div id="validationModal" class="modal">
+            <div class="modal-content modal-large">
+                <div class="modal-header">
+                    <h2>Data Validation Results</h2>
+                    <span class="close" data-modal="validationModal">&times;</span>
+                </div>
+                <div class="modal-body">
+                    <div id="validationSummary" class="validation-summary">
+                        <!-- Summary will be inserted here -->
+                    </div>
+
+                    <div id="validationErrors" class="validation-errors" style="display: none;">
+                        <h3>Validation Errors</h3>
+                        <div id="errorList" class="error-list">
+                            <!-- Error details will be inserted here -->
+                        </div>
+                    </div>
+
+                    <div class="modal-actions">
+                        <button id="importValidDataBtn" class="btn btn-primary" style="display: none;">Import Valid Rows</button>
+                        <button id="downloadErrorsBtn" class="btn btn-secondary" style="display: none;">Download Error Report</button>
+                        <button id="closeValidationBtn" class="btn btn-secondary">Close</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Auth Modal - shown before app loads if user is not signed in -->
+    <div id="authModal" class="modal" style="z-index:4000; display:none; position:fixed; inset:0; background:rgba(0,0,0,0.6); align-items:center; justify-content:center;">
+        <div class="modal-content" style="max-width:400px; width:100%; margin:0 16px;">
+            <div class="modal-header">
+                <h2>Sign In to SalesMapper</h2>
+            </div>
+            <div class="modal-body">
+                <!-- Tabs -->
+                <div style="display:flex; gap:4px; margin-bottom:16px; border-bottom:1px solid var(--color-border,#ddd); padding-bottom:0;">
+                    <button class="auth-tab active" data-auth-tab="signin" style="background:none; border:none; padding:8px 12px; cursor:pointer; font-weight:600; border-bottom:2px solid transparent;">Sign In</button>
+                    <button class="auth-tab" data-auth-tab="signup" style="background:none; border:none; padding:8px 12px; cursor:pointer; font-weight:600; border-bottom:2px solid transparent;">Create Account</button>
+                    <button class="auth-tab" data-auth-tab="magic" style="background:none; border:none; padding:8px 12px; cursor:pointer; font-weight:600; border-bottom:2px solid transparent;">Magic Link</button>
+                </div>
+
+                <!-- Email field (shared across tabs) -->
+                <div class="form-group">
+                    <label for="authEmail" class="form-label">Email</label>
+                    <input type="email" id="authEmail" class="form-input" placeholder="you@example.com" autocomplete="email" />
+                </div>
+
+                <!-- Password field (hidden for magic link) -->
+                <div class="form-group" id="authPasswordGroup">
+                    <label for="authPassword" class="form-label">Password</label>
+                    <input type="password" id="authPassword" class="form-input" placeholder="••••••••" autocomplete="current-password" />
+                </div>
+
+                <!-- Error / status message -->
+                <p id="authError" style="display:none; margin:8px 0; font-size:13px;"></p>
+
+                <!-- Submit -->
+                <div class="modal-actions" style="margin-top:16px;">
+                    <button id="authSubmitBtn" class="btn btn-primary" style="width:100%;">Sign In</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="loading-overlay">
+        <div class="spinner"></div>
+        <p>Loading...</p>
+    </div>
+
+    <!-- Supabase JS SDK -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <!-- PapaParse for CSV parsing -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+
+    <!-- SheetJS for Excel parsing -->
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+
+    <!-- Wellknown for WKT parsing -->
+    <script src="https://unpkg.com/wellknown@0.5.0/wellknown.js"></script>
+
+    <!-- Application JavaScript - New Modular Architecture -->
+    <!-- Core modules (no dependencies) -->
+    <script src="js/config.js"></script>
+    <script src="js/utils.js"></script>
+
+    <!-- State and UI management (depends on utils) -->
+    <script src="js/state-manager.js"></script>
+    <script src="js/ui-components.js"></script>
+    <script src="js/debug-console.js"></script>
+
+    <!-- Services (depends on config, utils) -->
+    <script src="js/validation-service.js"></script>
+    <script src="js/data-services.js"></script>
+
+    <!-- Plugin system (depends on state-manager, ui-components, utils, validation) -->
+    <script src="js/plugin-api.js"></script>
+
+    <!-- Example plugin (optional - can be removed or disabled) -->
+    <script src="plugins/example-plugin.js"></script>
+
+    <!-- Heat Map Overlay Plugin -->
+    <script src="plugins/heatmap-overlay.js"></script>
+
+    <!-- Existing application modules -->
+    <script src="js/supabase-config.js"></script>
+    <script src="js/auth-manager.js"></script>
+    <script src="js/geocoding-service.js"></script>
+    <script src="js/csv-parser.js"></script>
+    <script src="js/map-manager.js"></script>
+    <script src="js/layer-manager.js"></script>
+
+    <!-- v3.0 Features -->
+    <script src="js/command-history.js"></script>
+    <script src="js/analytics-panel.js"></script>
+    <script src="js/distance-tool.js"></script>
+    <script src="js/activity-log.js"></script>
+    <script src="js/notification-center.js"></script>
+    <script src="js/cluster-manager.js"></script>
+    <script src="js/map-export.js"></script>
+
+    <!-- Main application controller -->
+    <script src="js/app.js"></script>
+
+    <!-- Google Maps JavaScript API -->
+    <script src="https://maps.googleapis.com/maps/api/js?key=YOUR_GOOGLE_MAPS_API_KEY&libraries=places,marker,visualization,geometry&v=weekly&loading=async&callback=initMap"></script>
+
+    <!-- MarkerClusterer for point clustering -->
+    <script src="https://unpkg.com/@googlemaps/markerclusterer@2.5.3/dist/index.min.js"></script>
+</body>
+</html>

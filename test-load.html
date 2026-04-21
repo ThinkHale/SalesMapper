@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Module Load Test</title>
+</head>
+<body>
+    <h1>Module Load Test</h1>
+    <div id="status">Testing...</div>
+
+    <script src="js/config.js"></script>
+    <script src="js/utils.js"></script>
+    <script src="js/state-manager.js"></script>
+    <script src="js/ui-components.js"></script>
+    <script src="js/validation-service.js"></script>
+    <script src="js/data-services.js"></script>
+    <script src="js/plugin-api.js"></script>
+
+    <script>
+        const status = document.getElementById('status');
+        const tests = [];
+
+        // Test each module loaded correctly
+        tests.push(['AppConfig', typeof AppConfig !== 'undefined']);
+        tests.push(['Utils', typeof Utils !== 'undefined']);
+        tests.push(['stateManager', typeof stateManager !== 'undefined']);
+        tests.push(['eventBus', typeof eventBus !== 'undefined']);
+        tests.push(['modalManager', typeof modalManager !== 'undefined']);
+        tests.push(['toastManager', typeof toastManager !== 'undefined']);
+        tests.push(['loadingManager', typeof loadingManager !== 'undefined']);
+        tests.push(['validationService', typeof validationService !== 'undefined']);
+        tests.push(['pluginManager', typeof pluginManager !== 'undefined']);
+        tests.push(['externalAPI', typeof externalAPI !== 'undefined']);
+
+        let html = '<h2>Module Load Results:</h2><ul>';
+        let allPassed = true;
+
+        tests.forEach(([name, passed]) => {
+            const status = passed ? '✅ PASS' : '❌ FAIL';
+            html += `<li>${status} - ${name}</li>`;
+            if (!passed) allPassed = false;
+        });
+
+        html += '</ul>';
+        html += allPassed ? '<h2 style="color: green;">All modules loaded successfully!</h2>' : '<h2 style="color: red;">Some modules failed to load</h2>';
+
+        status.innerHTML = html;
+        console.log('Test results:', tests);
+    </script>
+</body>
+</html>

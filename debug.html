@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Debug</title>
+</head>
+<body>
+    <h1>Debug Output</h1>
+    <pre id="output"></pre>
+
+    <script>
+        const output = document.getElementById('output');
+        const log = [];
+
+        function addLog(msg) {
+            log.push(msg);
+            output.textContent = log.join('\n');
+            console.log(msg);
+        }
+
+        addLog('Starting script load test...');
+    </script>
+
+    <script src="js/config.js" onerror="addLog('ERROR loading config.js')"></script>
+    <script>addLog('✓ config.js loaded, AppConfig = ' + (typeof AppConfig));</script>
+
+    <script src="js/utils.js" onerror="addLog('ERROR loading utils.js')"></script>
+    <script>addLog('✓ utils.js loaded, Utils = ' + (typeof Utils));</script>
+
+    <script src="js/state-manager.js" onerror="addLog('ERROR loading state-manager.js')"></script>
+    <script>addLog('✓ state-manager.js loaded, stateManager = ' + (typeof stateManager));</script>
+
+    <script src="js/ui-components.js" onerror="addLog('ERROR loading ui-components.js')"></script>
+    <script>
+        addLog('✓ ui-components.js loaded');
+        addLog('  modalManager = ' + (typeof modalManager));
+        addLog('  toastManager = ' + (typeof toastManager));
+        addLog('  loadingManager = ' + (typeof loadingManager));
+        addLog('  eventBus = ' + (typeof eventBus));
+    </script>
+
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+    <script>addLog('✓ Firebase loaded');</script>
+
+    <script src="js/firebase-config.js" onerror="addLog('ERROR loading firebase-config.js')"></script>
+    <script>addLog('✓ firebase-config.js loaded, firebaseManager = ' + (typeof firebaseManager));</script>
+
+    <script src="js/validation-service.js" onerror="addLog('ERROR loading validation-service.js')"></script>
+    <script>addLog('✓ validation-service.js loaded, validationService = ' + (typeof validationService));</script>
+
+    <script src="js/data-services.js" onerror="addLog('ERROR loading data-services.js')"></script>
+    <script>addLog('✓ data-services.js loaded, initializeDataServices = ' + (typeof initializeDataServices));</script>
+
+    <script src="js/plugin-api.js" onerror="addLog('ERROR loading plugin-api.js')"></script>
+    <script>
+        addLog('✓ plugin-api.js loaded');
+        addLog('  pluginManager = ' + (typeof pluginManager));
+        addLog('  externalAPI = ' + (typeof externalAPI));
+        addLog('  window.SalesMapperAPI = ' + (typeof window.SalesMapperAPI));
+    </script>
+
+    <script>
+        addLog('\n=== All modules loaded successfully! ===');
+    </script>
+</body>
+</html>
