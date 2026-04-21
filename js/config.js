@@ -5,12 +5,12 @@
 
 const AppConfig = {
     // API Keys
-    googleMapsApiKey: 'YOUR_GOOGLE_MAPS_API_KEY',
+    googleMapsApiKey: 'AIzaSyBykC-Ud0Av1cNBFcfelKjBQojtzwC3sws',
 
     // Supabase Configuration
     supabase: {
-        url: 'YOUR_SUPABASE_URL',
-        anonKey: 'YOUR_SUPABASE_ANON_KEY'
+        url: 'https://pdrckkufafayrguokdkb.supabase.co',
+        anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBkcmNra3VmYWZheXJndW9rZGtiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY3MTYzNzQsImV4cCI6MjA5MjI5MjM3NH0.7Z2fEFiEvd1sQ486njjYESZWvKJwuzZxa-E7BzTkz1c'
     },
 
     // Map Settings
